@@ -76,13 +76,25 @@ int secp256k1_generator_parse(const secp256k1_context* ctx, secp256k1_generator*
 }
 
 int secp256k1_generator_serialize(const secp256k1_context* ctx, unsigned char *output, const secp256k1_generator* gen) {
+    int i;
     secp256k1_ge ge;
+    unsigned char y_bytes[32];
+    char y_hex[65];
 
     VERIFY_CHECK(ctx != NULL);
     ARG_CHECK(output != NULL);
     ARG_CHECK(gen != NULL);
 
     secp256k1_generator_load(&ge, gen);
+
+    secp256k1_fe_normalize_var(&ge.y);
+    secp256k1_fe_get_b32(y_bytes, &ge.y);
+
+    for (i = 0; i < 32; ++i) {
+        sprintf(&y_hex[i * 2], "%02x", y_bytes[i]);
+    }
+    y_hex[64] = '\0';
+    printf("Y coordinate: %s\n", y_hex);
 
     output[0] = 11 ^ secp256k1_fe_is_square_var(&ge.y);
     secp256k1_fe_normalize_var(&ge.x);

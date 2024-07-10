@@ -71,3 +71,4 @@ musig_example
 /CMakeUserPresets.json
 # Default CMake build directory.
 /build
+value_commitment_test

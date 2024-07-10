@@ -23,25 +23,47 @@ static int secp256k1_ecmult_gen_context_is_built(const secp256k1_ecmult_gen_cont
     return ctx->built;
 }
 
+
 static void secp256k1_ecmult_gen_context_clear(secp256k1_ecmult_gen_context *ctx) {
     ctx->built = 0;
     secp256k1_scalar_clear(&ctx->blind);
     secp256k1_gej_clear(&ctx->initial);
 }
 
-/* For accelerating the computation of a*G:
- * To harden against timing attacks, use the following mechanism:
- * * Break up the multiplicand into groups of PREC_BITS bits, called n_0, n_1, n_2, ..., n_(PREC_N-1).
- * * Compute sum(n_i * (PREC_G)^i * G + U_i, i=0 ... PREC_N-1), where:
- *   * U_i = U * 2^i, for i=0 ... PREC_N-2
- *   * U_i = U * (1-2^(PREC_N-1)), for i=PREC_N-1
- *   where U is a point with no known corresponding scalar. Note that sum(U_i, i=0 ... PREC_N-1) = 0.
- * For each i, and each of the PREC_G possible values of n_i, (n_i * (PREC_G)^i * G + U_i) is
- * precomputed (call it prec(i, n_i)). The formula now becomes sum(prec(i, n_i), i=0 ... PREC_N-1).
- * None of the resulting prec group elements have a known scalar, and neither do any of
- * the intermediate sums while computing a*G.
- * The prec values are stored in secp256k1_ecmult_gen_prec_table[i][n_i] = n_i * (PREC_G)^i * G + U_i.
- */
+/* Utility functions for converting to hex strings */
+static void secp256k1_fe_to_hex(const secp256k1_fe *fe, char *buf) {
+    unsigned char bin[32];
+    int i;
+    secp256k1_fe_get_b32(bin, fe);
+    for (i = 0; i < 32; i++) {
+        snprintf(buf + (i * 2), 3, "%02x", bin[i]);
+    }
+    buf[64] = '\0';
+}
+
+static const char* secp256k1_scalar_to_string(const secp256k1_scalar *s) {
+    static char buf[65];
+    unsigned char bin[32];
+    int i;
+    secp256k1_scalar_get_b32(bin, s);
+    for (i = 0; i < 32; i++) {
+        snprintf(buf + (i * 2), 3, "%02x", bin[i]);
+    }
+    buf[64] = '\0';
+    return buf;
+}
+
+static const char* secp256k1_gej_to_string(const secp256k1_gej *r) {
+    static char buf[390];
+    char x_buf[65], y_buf[65], z_buf[65];
+    secp256k1_fe_to_hex(&r->x, x_buf);
+    secp256k1_fe_to_hex(&r->y, y_buf);
+    secp256k1_fe_to_hex(&r->z, z_buf);
+    snprintf(buf, sizeof(buf), "r.x: %s, r.y: %s, r.z: %s", x_buf, y_buf, z_buf);
+    return buf;
+}
+
+
 static void secp256k1_ecmult_gen(const secp256k1_ecmult_gen_context *ctx, secp256k1_gej *r, const secp256k1_scalar *gn) {
     int bits = ECMULT_GEN_PREC_BITS;
     int g = ECMULT_GEN_PREC_G(bits);
@@ -51,25 +73,20 @@ static void secp256k1_ecmult_gen(const secp256k1_ecmult_gen_context *ctx, secp25
     secp256k1_ge_storage adds;
     secp256k1_scalar gnb;
     int i, j, n_i;
-    
     memset(&adds, 0, sizeof(adds));
     *r = ctx->initial;
+
+    printf("Initial r: %s\n", secp256k1_gej_to_string(r)); 
+
     /* Blind scalar/point multiplication by computing (n-b)G + bG instead of nG. */
     secp256k1_scalar_add(&gnb, gn, &ctx->blind);
+    
+    printf("Blind scalar gnb: %s\n", secp256k1_scalar_to_string(&gnb));
+
     add.infinity = 0;
     for (i = 0; i < n; i++) {
         n_i = secp256k1_scalar_get_bits(&gnb, i * bits, bits);
         for (j = 0; j < g; j++) {
-            /** This uses a conditional move to avoid any secret data in array indexes.
-             *   _Any_ use of secret indexes has been demonstrated to result in timing
-             *   sidechannels, even when the cache-line access patterns are uniform.
-             *  See also:
-             *   "A word of warning", CHES 2013 Rump Session, by Daniel J. Bernstein and Peter Schwabe
-             *    (https://cryptojedi.org/peter/data/chesrump-20130822.pdf) and
-             *   "Cache Attacks and Countermeasures: the Case of AES", RSA 2006,
-             *    by Dag Arne Osvik, Adi Shamir, and Eran Tromer
-             *    (https://www.tau.ac.il/~tromer/papers/cache.pdf)
-             */
             secp256k1_ge_storage_cmov(&adds, &secp256k1_ecmult_gen_prec_table[i][j], j == n_i);
         }
         secp256k1_ge_from_storage(&add, &adds);
