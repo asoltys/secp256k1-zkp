@@ -614,8 +614,10 @@ static int secp256k1_ec_pubkey_create_helper(const secp256k1_ecmult_gen_context 
     ret = secp256k1_scalar_set_b32_seckey(seckey_scalar, seckey);
     secp256k1_scalar_cmov(seckey_scalar, &secp256k1_scalar_one, !ret);
 
+    printf("HAHA scalar: %s\n", secp256k1_scalar_to_string(seckey_scalar));
     secp256k1_ecmult_gen(ecmult_gen_ctx, &pj, seckey_scalar);
     secp256k1_ge_set_gej(p, &pj);
+    printf("Blinding point: %s\n", secp256k1_gej_to_string(&pj)); 
     return ret;
 }
 

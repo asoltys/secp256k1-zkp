@@ -82,28 +82,13 @@ SECP256K1_INLINE static void secp256k1_pedersen_ecmult(const secp256k1_ecmult_ge
     }
     print_secp256k1_ge(&base_ge);
 
-    printf("sec blinding factor:\n");
+    printf("Blinding factor:\n");
     print_secp256k1_scalar(sec);
-
-    printf("rj after ecmult_gen:\n");
-    printf("rj.x = "); print_secp256k1_fe(&rj->x);
-    printf("rj.y = "); print_secp256k1_fe(&rj->y);
-    printf("rj.z = "); print_secp256k1_fe(&rj->z);
 
     secp256k1_pedersen_ecmult_small(&vj, value, genp);
 
-    printf("vj after pedersen_ecmult_small:\n");
-    printf("vj.x = "); print_secp256k1_fe(&vj.x);
-    printf("vj.y = "); print_secp256k1_fe(&vj.y);
-    printf("vj.z = "); print_secp256k1_fe(&vj.z);
-
     /* FIXME: constant time. */
     secp256k1_gej_add_var(rj, rj, &vj, NULL);
-
-    printf("rj after gej_add_var:\n");
-    printf("rj.x = "); print_secp256k1_fe(&rj->x);
-    printf("rj.y = "); print_secp256k1_fe(&rj->y);
-    printf("rj.z = "); print_secp256k1_fe(&rj->z);
 
     secp256k1_gej_clear(&vj);
 }

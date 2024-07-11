@@ -32,6 +32,7 @@ static void secp256k1_ecmult_gen_context_clear(secp256k1_ecmult_gen_context *ctx
 
 /* Utility functions for converting to hex strings */
 static void secp256k1_fe_to_hex(const secp256k1_fe *fe, char *buf) {
+
     unsigned char bin[32];
     int i;
     secp256k1_fe_get_b32(bin, fe);
@@ -59,10 +60,9 @@ static const char* secp256k1_gej_to_string(const secp256k1_gej *r) {
     secp256k1_fe_to_hex(&r->x, x_buf);
     secp256k1_fe_to_hex(&r->y, y_buf);
     secp256k1_fe_to_hex(&r->z, z_buf);
-    snprintf(buf, sizeof(buf), "r.x: %s, r.y: %s, r.z: %s", x_buf, y_buf, z_buf);
+    snprintf(buf, sizeof(buf), "\n x: %s\n y: %s\n z: %s\n", x_buf, y_buf, z_buf);
     return buf;
 }
-
 
 static void secp256k1_ecmult_gen(const secp256k1_ecmult_gen_context *ctx, secp256k1_gej *r, const secp256k1_scalar *gn) {
     int bits = ECMULT_GEN_PREC_BITS;
@@ -76,12 +76,12 @@ static void secp256k1_ecmult_gen(const secp256k1_ecmult_gen_context *ctx, secp25
     memset(&adds, 0, sizeof(adds));
     *r = ctx->initial;
 
-    printf("Initial r: %s\n", secp256k1_gej_to_string(r)); 
+    printf("Input point: %s\n", secp256k1_gej_to_string(r)); 
 
     /* Blind scalar/point multiplication by computing (n-b)G + bG instead of nG. */
     secp256k1_scalar_add(&gnb, gn, &ctx->blind);
     
-    printf("Blind scalar gnb: %s\n", secp256k1_scalar_to_string(&gnb));
+    printf("Input scalar: %s\n", secp256k1_scalar_to_string(&gnb));
 
     add.infinity = 0;
     for (i = 0; i < n; i++) {
@@ -93,6 +93,9 @@ static void secp256k1_ecmult_gen(const secp256k1_ecmult_gen_context *ctx, secp25
         secp256k1_gej_add_ge(r, r, &add);
     }
     n_i = 0;
+
+    printf("Output point: %s\n", secp256k1_gej_to_string(r)); 
+
     secp256k1_ge_clear(&add);
     secp256k1_scalar_clear(&gnb);
 }
