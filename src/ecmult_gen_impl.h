@@ -76,13 +76,9 @@ static void secp256k1_ecmult_gen(const secp256k1_ecmult_gen_context *ctx, secp25
     memset(&adds, 0, sizeof(adds));
     *r = ctx->initial;
 
-    printf("Input point: %s\n", secp256k1_gej_to_string(r)); 
-
     /* Blind scalar/point multiplication by computing (n-b)G + bG instead of nG. */
     secp256k1_scalar_add(&gnb, gn, &ctx->blind);
     
-    printf("Input scalar: %s\n", secp256k1_scalar_to_string(&gnb));
-
     add.infinity = 0;
     for (i = 0; i < n; i++) {
         n_i = secp256k1_scalar_get_bits(&gnb, i * bits, bits);
@@ -93,8 +89,6 @@ static void secp256k1_ecmult_gen(const secp256k1_ecmult_gen_context *ctx, secp25
         secp256k1_gej_add_ge(r, r, &add);
     }
     n_i = 0;
-
-    printf("Output point: %s\n", secp256k1_gej_to_string(r)); 
 
     secp256k1_ge_clear(&add);
     secp256k1_scalar_clear(&gnb);

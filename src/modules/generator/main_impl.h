@@ -315,6 +315,7 @@ int secp256k1_pedersen_commitment_serialize(const secp256k1_context* ctx, unsign
 
 /* Generates a pedersen commitment: *commit = blind * G + value * G2. The blinding factor is 32 bytes.*/
 int secp256k1_pedersen_commit(const secp256k1_context* ctx, secp256k1_pedersen_commitment *commit, const unsigned char *blind, uint64_t value, const secp256k1_generator* gen) {
+    fflush(stdout);
     secp256k1_ge genp;
     secp256k1_gej rj;
     secp256k1_ge r;
@@ -328,6 +329,7 @@ int secp256k1_pedersen_commit(const secp256k1_context* ctx, secp256k1_pedersen_c
     ARG_CHECK(gen != NULL);
     secp256k1_generator_load(&genp, gen);
     secp256k1_scalar_set_b32(&sec, blind, &overflow);
+    fflush(stdout);
     if (!overflow) {
         secp256k1_pedersen_ecmult(&ctx->ecmult_gen_ctx, &rj, &sec, value, &genp);
         if (!secp256k1_gej_is_infinity(&rj)) {

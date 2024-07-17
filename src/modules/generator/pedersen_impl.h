@@ -66,6 +66,16 @@ static void print_secp256k1_ge(const secp256k1_ge* ge) {
     printf("y = "); print_secp256k1_fe(&ge->y);
 }
 
+static void print_secp256k1_gej(const secp256k1_gej *gej) {
+    secp256k1_ge ge;
+    if (secp256k1_gej_is_infinity(gej)) {
+        printf("Point at infinity\n");
+    } else {
+        secp256k1_ge_set_gej(&ge, (secp256k1_gej *)gej);
+        print_secp256k1_ge(&ge);
+    }
+}
+
 /* sec * G + value * G2. */
 SECP256K1_INLINE static void secp256k1_pedersen_ecmult(const secp256k1_ecmult_gen_context *ecmult_gen_ctx, secp256k1_gej *rj, const secp256k1_scalar *sec, uint64_t value, const secp256k1_ge* genp) {
     secp256k1_gej vj;
@@ -76,14 +86,9 @@ SECP256K1_INLINE static void secp256k1_pedersen_ecmult(const secp256k1_ecmult_ge
     base_gej = ecmult_gen_ctx->initial;
     secp256k1_ge_set_gej(&base_ge, &base_gej);
 
-    printf("Base Point (G):\n");
     if (secp256k1_fe_is_odd(&base_ge.y)) {
         secp256k1_fe_negate(&base_ge.y, &base_ge.y, 1);
     }
-    print_secp256k1_ge(&base_ge);
-
-    printf("Blinding factor:\n");
-    print_secp256k1_scalar(sec);
 
     secp256k1_pedersen_ecmult_small(&vj, value, genp);
 
