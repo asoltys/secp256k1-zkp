@@ -163,6 +163,7 @@ static void secp256k1_scalar_set_b32(secp256k1_scalar *r, const unsigned char *b
     r->d[3] = secp256k1_read_be64(&b32[0]);
     over = secp256k1_scalar_reduce(r, secp256k1_scalar_check_overflow(r));
     if (overflow) {
+        /* printf("OVERFLOWING\n", over); */
         *overflow = over;
     }
 

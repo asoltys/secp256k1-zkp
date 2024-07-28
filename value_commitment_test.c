@@ -110,6 +110,8 @@ void rangeproof() {
       return;
     }
 
+    print_scalar(valueBlinder, "valueBlinder");
+
     ret = secp256k1_rangeproof_sign(
         ctx,
         proof,

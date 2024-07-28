@@ -16,6 +16,7 @@
 #include "../generator/pedersen.h"
 #include "../rangeproof/borromean.h"
 #include "../rangeproof/rangeproof.h"
+#include <inttypes.h>
 
 SECP256K1_INLINE static void secp256k1_rangeproof_pub_expand(secp256k1_gej *pubs,
  int exp, size_t *rsizes, size_t rings, const secp256k1_ge* genp) {
@@ -71,11 +72,45 @@ SECP256K1_INLINE static int secp256k1_rangeproof_genrand(secp256k1_scalar *sec, 
     int b;
     size_t npub;
     VERIFY_CHECK(len <= 10);
+
+    print_array("nonce", nonce, 32);
+
+    printf("commit\n");
+    print_ge(commit);
+
+
+    /*
+    printf("\n\n----- GENRAND ------\n", rings);
+    print_array("message", message, 64); 
+
+    print_array("rsizes", rsizes, rings);
+
+    printf("rings: %zu\n", rings);
+
+    print_array("nonce", nonce, 32);
+
+    secp256k1_gej commitj;
+    secp256k1_gej_set_ge(&commitj, commit);
+    print_gej("commit", &commitj);
+
+    print_array("proof", proof, len);
+
+    printf("len: %zu\n", len);
+
+    secp256k1_gej genj;
+    secp256k1_gej_set_ge(&genj, genp);
+    print_gej("gen", &genj);
+    printf("----- END GENRAND ---- \n\n\n", rings);
+    */
+
     memcpy(rngseed, nonce, 32);
     secp256k1_rangeproof_serialize_point(rngseed + 32, commit);
     secp256k1_rangeproof_serialize_point(rngseed + 32 + 33, genp);
     memcpy(rngseed + 33 + 33 + 32, proof, len);
     secp256k1_rfc6979_hmac_sha256_initialize(&rng, rngseed, 32 + 33 + 33 + len);
+
+    print_array("RNGSEED", rngseed, 32 + 33 + 33 + len);
+
     secp256k1_scalar_clear(&acc);
     npub = 0;
     ret = 1;
@@ -187,6 +222,40 @@ SECP256K1_INLINE static int secp256k1_range_proveparams(uint64_t *v, size_t *rin
     return 1;
 }
 
+void print_fe(const secp256k1_fe *fe) {
+    int i;
+    printf("0x");
+    for (i = 9; i >= 0; i--) {
+        printf("%08" PRIx32, fe->n[i]);
+    }
+    printf("\n");
+}
+
+void print_ge(const secp256k1_ge *point) {
+    if (point->infinity) {
+        printf("Point at infinity\n");
+    } else {
+        printf("x: ");
+        print_fe(&point->x);
+        printf("y: ");
+        print_fe(&point->y);
+    }
+}
+
+void print_scalarc(const char* name, const secp256k1_scalar* scalar, size_t count) {
+    unsigned char bin[32];
+    size_t i;
+    int j;
+    for (i = 0; i < count; i++) {
+        secp256k1_scalar_get_b32(bin, &scalar[i]);
+        printf("%s[%zu] = ", name, i);
+        for (j = 0; j < 32; j++) {
+            printf("%02x", bin[j]);
+        }
+        printf("\n");
+    }
+}
+
 /* strawman interface, writes proof in proof, a buffer of plen, proves with respect to min_value the range for commit which has the provided blinding factor and value. */
 SECP256K1_INLINE static int secp256k1_rangeproof_sign_impl(const secp256k1_ecmult_gen_context* ecmult_gen_ctx,
  unsigned char *proof, size_t *plen, uint64_t min_value,
@@ -211,13 +280,43 @@ SECP256K1_INLINE static int secp256k1_rangeproof_sign_impl(const secp256k1_ecmul
     size_t i;
     int overflow;
     size_t npub;
+
+    print_scalar("initial blind", blind);
+
     len = 0;
     if (*plen < 65 || min_value > value || min_bits > 64 || min_bits < 0 || exp < -1 || exp > 18) {
         return 0;
     }
+
+
+    /*
+    printf("Before:\n");
+    printf("v: %" PRIu64 "\n", v);
+    printf("rings: %zu\n", rings);
+    printf("rsizes: ");
+    for (i = 0; i < 32; i++) {
+        printf("%zu ", rsizes[i]);
+    }
+    printf("\n");
+    printf("npub: %zu\n", npub);
+    printf("secidx: ");
+    for (i = 0; i < 32; i++) {
+        printf("%zu ", secidx[i]);
+    }
+    printf("\n");
+    printf("min_value: %" PRIu64 "\n", min_value);
+    printf("mantissa: %d\n", mantissa);
+    printf("scale: %" PRIu64 "\n", scale);
+    printf("exp: %d\n", exp);
+    printf("min_bits: %d\n", min_bits);
+    printf("value: %" PRIu64 "\n", value);
+    */
+
     if (!secp256k1_range_proveparams(&v, &rings, rsizes, &npub, secidx, &min_value, &mantissa, &scale, &exp, &min_bits, value)) {
         return 0;
     }
+
+
     proof[len] = (rsizes[0] > 1 ? (64 | exp) : 0) | (min_value ? 32 : 0);
     len++;
     if (rsizes[0] > 1) {
@@ -266,9 +365,25 @@ SECP256K1_INLINE static int secp256k1_rangeproof_sign_impl(const secp256k1_ecmul
         }
         prep[idx] = 128;
     }
+
+    printf("rings: %zu\n", rings);
+    printf("rsizes: ");
+    for (i = 0; i < 32; i++) {
+        printf("%zu ", rsizes[i]);
+    }
+    
     if (!secp256k1_rangeproof_genrand(sec, s, prep, rsizes, rings, nonce, commit, proof, len, genp)) {
         return 0;
     }
+
+    printf("Values in sec:\n");
+    print_scalarc("sec", sec, 1);
+    /*
+
+    printf("\nValues in s:\n");
+    print_scalarc("s", s, 128);
+    */
+
     memset(prep, 0, 4096);
     for (i = 0; i < rings; i++) {
         /* Sign will overwrite the non-forged signature, move that random value into the nonce. */
@@ -281,8 +396,12 @@ SECP256K1_INLINE static int secp256k1_rangeproof_sign_impl(const secp256k1_ecmul
      *   all the digits in the proof from the commitment. This lets the prover skip sending the
      *   blinded value for one digit.
      */
+    print_scalarb(blind, "blind");
     secp256k1_scalar_set_b32(&stmp, blind, &overflow);
+    print_scalarb(&stmp, "stmp");
+    print_scalar("b4", &sec[rings - 1]);
     secp256k1_scalar_add(&sec[rings - 1], &sec[rings - 1], &stmp);
+    print_scalar("aft", &sec[rings - 1]);
     if (overflow || secp256k1_scalar_is_zero(&sec[rings - 1])) {
         return 0;
     }
@@ -295,6 +414,12 @@ SECP256K1_INLINE static int secp256k1_rangeproof_sign_impl(const secp256k1_ecmul
     npub = 0;
     for (i = 0; i < rings; i++) {
         /*OPT: Use the precomputed gen2 basis?*/
+        /*
+        printf("i: %zu ", i);
+        printf("secidx: %zu ", secidx[i]);
+        printf("scale: %zu \n", scale);
+        print_scalar("sec", &sec[i]);
+        */
         secp256k1_pedersen_ecmult(ecmult_gen_ctx, &pubs[npub], &sec[i], ((uint64_t)secidx[i] * scale) << (i*2), genp);
         if (secp256k1_gej_is_infinity(&pubs[npub])) {
             return 0;

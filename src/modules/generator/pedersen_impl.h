@@ -16,6 +16,7 @@
 #include "../../field.h"
 #include "../../scalar.h"
 #include "../../util.h"
+#include <inttypes.h>
 
 static void secp256k1_pedersen_scalar_set_u64(secp256k1_scalar *sec, uint64_t value) {
     unsigned char data[32];

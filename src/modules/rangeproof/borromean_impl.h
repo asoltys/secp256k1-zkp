@@ -104,6 +104,19 @@ int secp256k1_borromean_verify(secp256k1_scalar *evalues, const unsigned char *e
     return secp256k1_memcmp_var(e0, tmp, 32) == 0;
 }
 
+void bytes_to_hex(const unsigned char *bytes, size_t bytes_len, char *hex) {
+    size_t i;
+    for (i = 0; i < bytes_len; i++) {
+        sprintf(&hex[i * 2], "%02x", bytes[i]);
+    }
+}
+
+void print_scalarb(const unsigned char *scalar, const char *label) {
+    char scalar_hex[65];
+    bytes_to_hex(scalar, 32, scalar_hex);
+    printf("%s: %s\n", label, scalar_hex);
+}
+
 void print_scalar(const char* label, const secp256k1_scalar *scalar) {
     int i;
     unsigned char buf[32];
@@ -186,7 +199,6 @@ int secp256k1_borromean_sign(const secp256k1_ecmult_gen_context *ecmult_gen_ctx,
         printf("%02x", e0[i]);
     }
     printf("\n");
-    */
 
     printf("Parameters:\n");
     for (i = 0; i < 72; i++) {
@@ -197,6 +209,7 @@ int secp256k1_borromean_sign(const secp256k1_ecmult_gen_context *ecmult_gen_ctx,
     printf("nrings: %zu\n", nrings);
     print_array("m", m, mlen);
     printf("mlen: %zu\n", mlen);
+    */
 
     for (i = 0; i < nrings; i++) {
         VERIFY_CHECK(INT_MAX - count > rsizes[i]);
@@ -222,17 +235,13 @@ int secp256k1_borromean_sign(const secp256k1_ecmult_gen_context *ecmult_gen_ctx,
             }
             secp256k1_ge_set_gej(&rge, &rgej);
             secp256k1_eckey_pubkey_serialize(&rge, tmp, &size, 1);
-            print_array("tmp", tmp, 32);
         }
         secp256k1_sha256_write(&sha256_e0, tmp, size);
         count += rsizes[i];
     }
 
-    print_array("m", m, mlen);
     secp256k1_sha256_write(&sha256_e0, m, mlen);
     secp256k1_sha256_finalize(&sha256_e0, e0);
-
-    print_array("e0", e0, 32);
 
     count = 0;
     for (i = 0; i < nrings; i++) {
