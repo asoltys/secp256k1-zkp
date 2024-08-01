@@ -220,8 +220,15 @@ int secp256k1_borromean_sign(const secp256k1_ecmult_gen_context *ecmult_gen_ctx,
         }
         secp256k1_eckey_pubkey_serialize(&rge, tmp, &size, 1);
         for (j = secidx[i] + 1; j < rsizes[i]; j++) {
+          /*
+            printf("j: %zu\n", j);
+            print_array("m", m, 32);
+            */
             secp256k1_borromean_hash(tmp, m, mlen, tmp, 33, i, j);
             secp256k1_scalar_set_b32(&ens, tmp, &overflow);
+            /*
+            print_scalar("ens", &ens);
+            */
             if (overflow || secp256k1_scalar_is_zero(&ens)) {
                 return 0;
             }

@@ -72,8 +72,6 @@ void rangeproof() {
     uint64_t value = strtoull("123455000", NULL, 10);
     uint64_to_bytes(value, value_bytes);
 
-    printf("RANGEPROOF\n");
-
     int minval = 1;
     int exp = 0;
     int bits = 36;
@@ -110,8 +108,6 @@ void rangeproof() {
       return;
     }
 
-    print_scalar(valueBlinder, "valueBlinder");
-
     ret = secp256k1_rangeproof_sign(
         ctx,
         proof,
@@ -144,88 +140,7 @@ void rangeproof() {
 }
 
 int main() {
-    // Initialize the secp256k1 context
-    secp256k1_context *ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
-
-    // Test data
-    const char *generator_hex = "0ba4fd25e0e2108e55aec683810a8652f9b067242419a1f7cc0f01f92b4b078252";
-    const char *blinder_hex = "8b5d87d94b9f54dc5dd9f31df5dffedc974fc4d5bf0d2ee1297e5aba504ccc26";
-    const char *expected_hex = "08a9de5e391458abf4eb6ff0cc346fa0a8b5b0806b2ee9261dde54d436423c1982";
-
-    // Convert hex strings to byte arrays
-    unsigned char generator_bytes[33];
-    unsigned char blinder[32];
-    unsigned char expected_commitment[33];
-    unsigned char value_bytes[32];
-    hex_to_bytes(generator_hex, generator_bytes, 33);
-    hex_to_bytes(blinder_hex, blinder, 32);
-    hex_to_bytes(expected_hex, expected_commitment, 33);
-
-    const char *value_str = "10000";
-    uint64_t value = strtoull(value_str, NULL, 10);
-    uint64_to_bytes(value, value_bytes);
-
-    // Deserialize generator
-    secp256k1_generator generator;
-    if (!secp256k1_generator_parse(ctx, &generator, generator_bytes)) {
-        printf("Failed to parse generator.\n");
-        return 1;
-    }
-
-    // Log the generator point using print_point function
-    print_point(ctx, (secp256k1_pubkey *)&generator, "Generator Point G2");
-
-    // Serialize the generator point and print the Y coordinate (the function has been modified to print Y)
-    unsigned char output[33];
-    secp256k1_generator_serialize(ctx, output, &generator);
-
-
-    // Create the commitment
-    secp256k1_pedersen_commitment commitment;
-    printf("PEDERSEN\n");
-    if (!secp256k1_pedersen_commit(ctx, &commitment, blinder, value, &generator)) {
-        printf("Failed to create value commitment.\n");
-        return 1;
-    }
-
-    // Serialize and log the commitment
-    unsigned char commitment_bytes[33];
-    secp256k1_pedersen_commitment_serialize(ctx, commitment_bytes, &commitment);
-    
-    /*
-    // Parse the generator point as a public key
-    secp256k1_pubkey pubkey;
-    if (!secp256k1_ec_pubkey_parse(ctx, &pubkey, generator_bytes, 33)) {
-        printf("Failed to parse generator as pubkey.\n");
-        return 1;
-    }
-
-    // Multiply the public key by the scalar
-    secp256k1_pubkey proof_pubkey = pubkey;
-    if (!secp256k1_ec_pubkey_tweak_mul(ctx, &proof_pubkey, value_bytes)) {
-        printf("Failed to multiply scalar by generator.\n");
-        return 1;
-    }
-
-    print_point(ctx, &proof_pubkey, "value*G2");
-    */
-
-    char commitment_hex[67];
-    bytes_to_hex(commitment_bytes, 33, commitment_hex);
-    printf("%s (hex): %s\n", "Commitment hex", commitment_hex);
-
-    // Compare the created commitment with the expected commitment
-    if (memcmp(commitment_bytes, expected_commitment, 33) == 0) {
-        printf("Value commitment matches expected proof.\n");
-    } else {
-        printf("Value commitment does not match expected proof.\n");
-    }
-
-    // Destroy the secp256k1 context
-    secp256k1_context_destroy(ctx);
-
     rangeproof();
-
     return 0;
 }
 

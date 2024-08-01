@@ -105,6 +105,11 @@ SECP256K1_INLINE static int secp256k1_scalar_reduce(secp256k1_scalar *r, unsigne
     return overflow;
 }
 
+
+static void print_scalard(const char *name, const secp256k1_scalar *s) {
+    printf("%s: %016llx %016llx %016llx %016llx\n", name, s->d[3], s->d[2], s->d[1], s->d[0]);
+}
+
 static int secp256k1_scalar_add(secp256k1_scalar *r, const secp256k1_scalar *a, const secp256k1_scalar *b) {
     int overflow;
     secp256k1_uint128 t;
@@ -130,6 +135,57 @@ static int secp256k1_scalar_add(secp256k1_scalar *r, const secp256k1_scalar *a, 
     SECP256K1_SCALAR_VERIFY(r);
     return overflow;
 }
+
+static int secp256k1_scalar_addz(secp256k1_scalar *r, const secp256k1_scalar *a, const secp256k1_scalar *b) {
+    int overflow;
+    secp256k1_uint128 t;
+    SECP256K1_SCALAR_VERIFY(a);
+    SECP256K1_SCALAR_VERIFY(b);
+
+    print_scalard("a", a);
+    print_scalard("b", b);
+
+    secp256k1_u128_from_u64(&t, a->d[0]);
+    secp256k1_u128_accum_u64(&t, b->d[0]);
+    r->d[0] = secp256k1_u128_to_u64(&t); 
+    secp256k1_u128_rshift(&t, 64);
+    
+    printf("r->d[0]: %016llx\n", r->d[0]);
+
+    secp256k1_u128_accum_u64(&t, a->d[1]);
+    secp256k1_u128_accum_u64(&t, b->d[1]);
+    r->d[1] = secp256k1_u128_to_u64(&t); 
+    secp256k1_u128_rshift(&t, 64);
+
+    printf("r->d[1]: %016llx\n", r->d[1]);
+
+    secp256k1_u128_accum_u64(&t, a->d[2]);
+    secp256k1_u128_accum_u64(&t, b->d[2]);
+    r->d[2] = secp256k1_u128_to_u64(&t); 
+    secp256k1_u128_rshift(&t, 64);
+
+    printf("r->d[2]: %016llx\n", r->d[2]);
+
+    secp256k1_u128_accum_u64(&t, a->d[3]);
+    secp256k1_u128_accum_u64(&t, b->d[3]);
+    r->d[3] = secp256k1_u128_to_u64(&t); 
+    secp256k1_u128_rshift(&t, 64);
+
+    printf("r->d[3]: %016llx\n", r->d[3]);
+
+    overflow = secp256k1_u128_to_u64(&t) + secp256k1_scalar_check_overflow(r);
+
+    printf("overflow: %d\n", overflow);
+
+    VERIFY_CHECK(overflow == 0 || overflow == 1);
+    secp256k1_scalar_reduce(r, overflow);
+
+    print_scalard("r", r);
+
+    SECP256K1_SCALAR_VERIFY(r);
+    return overflow;
+}
+
 
 static void secp256k1_scalar_cadd_bit(secp256k1_scalar *r, unsigned int bit, int flag) {
     secp256k1_uint128 t;
