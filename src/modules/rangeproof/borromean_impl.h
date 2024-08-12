@@ -220,15 +220,8 @@ int secp256k1_borromean_sign(const secp256k1_ecmult_gen_context *ecmult_gen_ctx,
         }
         secp256k1_eckey_pubkey_serialize(&rge, tmp, &size, 1);
         for (j = secidx[i] + 1; j < rsizes[i]; j++) {
-          /*
-            printf("j: %zu\n", j);
-            print_array("m", m, 32);
-            */
             secp256k1_borromean_hash(tmp, m, mlen, tmp, 33, i, j);
             secp256k1_scalar_set_b32(&ens, tmp, &overflow);
-            /*
-            print_scalar("ens", &ens);
-            */
             if (overflow || secp256k1_scalar_is_zero(&ens)) {
                 return 0;
             }
@@ -253,32 +246,55 @@ int secp256k1_borromean_sign(const secp256k1_ecmult_gen_context *ecmult_gen_ctx,
     count = 0;
     for (i = 0; i < nrings; i++) {
         VERIFY_CHECK(INT_MAX - count > rsizes[i]);
+        print_array("e0", e0, 32);
+        print_array("m", m, mlen);
+        printf("SKOO\n");
         secp256k1_borromean_hash(tmp, m, mlen, e0, 32, i, 0);
+        print_array("tmp", tmp, 32);
         secp256k1_scalar_set_b32(&ens, tmp, &overflow);
+        print_array("ens", &ens, 32);
         if (overflow || secp256k1_scalar_is_zero(&ens)) {
             return 0;
         }
         for (j = 0; j < secidx[i]; j++) {
+            print_gej("pub", &pubs[count+j]);
+            print_array("ens", &ens, 32);
+            print_array("s", &s[count+j], 32);
             secp256k1_ecmult(&rgej, &pubs[count + j], &ens, &s[count + j]);
             if (secp256k1_gej_is_infinity(&rgej)) {
                 return 0;
             }
             secp256k1_ge_set_gej(&rge, &rgej);
             secp256k1_eckey_pubkey_serialize(&rge, tmp, &size, 1);
+            print_array("rgej", tmp, 33);
+            printf("WOWIE\n");
             secp256k1_borromean_hash(tmp, m, mlen, tmp, 33, i, j + 1);
+            print_array("tmp", tmp, 32);
             secp256k1_scalar_set_b32(&ens, tmp, &overflow);
+            print_array("ensB", &ens, 32);
             if (overflow || secp256k1_scalar_is_zero(&ens)) {
                 return 0;
             }
         }
+
+        print_array("ens", &ens, 32);
+        print_array("sec", &sec[i], 32);
+        print_array("k", &k[i], 32);
         secp256k1_scalar_mul(&s[count + j], &ens, &sec[i]);
+        print_array("mul", &s[count + j], 32);
         secp256k1_scalar_negate(&s[count + j], &s[count + j]);
+        print_array("neg", &s[count + j], 32);
         secp256k1_scalar_add(&s[count + j], &s[count + j], &k[i]);
+        print_array("add", &s[count + j], 32);
+
+        printf("===== setting %zu ====", count+j);
+        print_array("", &s[count+j], 32);
         if (secp256k1_scalar_is_zero(&s[count + j])) {
             return 0;
         }
         count += rsizes[i];
     }
+
 
     /*
     printf("Final s values:\n");

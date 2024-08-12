@@ -74,13 +74,13 @@ SECP256K1_INLINE static int secp256k1_rangeproof_genrand(secp256k1_scalar *sec, 
     VERIFY_CHECK(len <= 10);
 
     /*
+    printf("\n\n----- GENRAND ------\n", rings);
     print_array("nonce", nonce, 32);
 
     printf("commit\n");
     print_ge(commit);
 
 
-    printf("\n\n----- GENRAND ------\n", rings);
     print_array("message", message, 64); 
 
     print_array("rsizes", rsizes, rings);
@@ -109,7 +109,7 @@ SECP256K1_INLINE static int secp256k1_rangeproof_genrand(secp256k1_scalar *sec, 
     memcpy(rngseed + 33 + 33 + 32, proof, len);
     secp256k1_rfc6979_hmac_sha256_initialize(&rng, rngseed, 32 + 33 + 33 + len);
 
-    /* print_array("RNGSEED", rngseed, 32 + 33 + 33 + len); */
+    /* print_array("RNGSEED", rngseed, 32 + 33 + 33 + len);*/
 
     secp256k1_scalar_clear(&acc);
     npub = 0;
@@ -124,7 +124,6 @@ SECP256K1_INLINE static int secp256k1_rangeproof_genrand(secp256k1_scalar *sec, 
             } while (overflow || secp256k1_scalar_is_zero(&sec[i]));
             secp256k1_scalar_add(&acc, &acc, &sec[i]);
         } else {
-            print_scalar("acc", &acc);
             secp256k1_scalar_negate(&acc, &acc);
             sec[i] = acc;
         }
@@ -135,12 +134,20 @@ SECP256K1_INLINE static int secp256k1_rangeproof_genrand(secp256k1_scalar *sec, 
         */
         for (j = 0; j < rsizes[i]; j++) {
             secp256k1_rfc6979_hmac_sha256_generate(&rng, tmp, 32);
+            /*
+            printf("npub %zu\n", npub);
+            print_array("tmp", tmp, 32);
+            */
             if (message) {
+                /* print_array("message", message, 64);  */
                 for (b = 0; b < 32; b++) {
                     tmp[b] ^= message[(i * 4 + j) * 32 + b];
                     message[(i * 4 + j) * 32 + b] = tmp[b];
                 }
             }
+            /*
+            print_array("tmp", tmp, 32);
+            */
             secp256k1_scalar_set_b32(&s[npub], tmp, &overflow);
             ret &= !(overflow || secp256k1_scalar_is_zero(&s[npub]));
             npub++;
@@ -390,6 +397,8 @@ SECP256K1_INLINE static int secp256k1_rangeproof_sign_impl(const secp256k1_ecmul
     if (message != NULL) {
         memcpy(prep, message, msg_len);
     }
+
+
     /* Note, the data corresponding to the blinding factors must be zero. */
     if (rsizes[rings - 1] > 1) {
         size_t idx;
@@ -415,12 +424,14 @@ SECP256K1_INLINE static int secp256k1_rangeproof_sign_impl(const secp256k1_ecmul
     if (!secp256k1_rangeproof_genrand(sec, s, prep, rsizes, rings, nonce, commit, proof, len, genp)) {
         return 0;
     }
+
     /*
     printf("Values in sec:\n");
     print_scalarc("sec", sec, 32);
 
     printf("\nValues in s:\n");
     print_scalarc("s", s, 128);
+    print_array("s0", &s[0], 32);
     */
 
     memset(prep, 0, 4096);
@@ -435,12 +446,8 @@ SECP256K1_INLINE static int secp256k1_rangeproof_sign_impl(const secp256k1_ecmul
      *   all the digits in the proof from the commitment. This lets the prover skip sending the
      *   blinded value for one digit.
      */
-    print_scalar("blind", blind);
     secp256k1_scalar_set_b32(&stmp, blind, &overflow);
-    print_scalar("stmp", &stmp);
-    print_scalar("b4", &sec[rings - 1]);
     secp256k1_scalar_add(&sec[rings - 1], &sec[rings - 1], &stmp);
-    print_scalar("aft", &sec[rings - 1]);
     if (overflow || secp256k1_scalar_is_zero(&sec[rings - 1])) {
         return 0;
     }
@@ -464,10 +471,6 @@ SECP256K1_INLINE static int secp256k1_rangeproof_sign_impl(const secp256k1_ecmul
         */
         secp256k1_pedersen_ecmult(ecmult_gen_ctx, &pubs[npub], &sec[i], val, genp);
 
-        /*
-        printf("%zu ", i);
-        print_gej("pub", &pubs[npub]);
-        */
         if (secp256k1_gej_is_infinity(&pubs[npub])) {
             return 0;
         }
@@ -489,19 +492,22 @@ SECP256K1_INLINE static int secp256k1_rangeproof_sign_impl(const secp256k1_ecmul
     }
     secp256k1_rangeproof_pub_expand(pubs, exp, rsizes, rings, genp);
     if (extra_commit != NULL) {
-        print_array("extraCommit", extra_commit, extra_commit_len);
         secp256k1_sha256_write(&sha256_m, extra_commit, extra_commit_len);
+        secp256k1_sha256_finalize(&sha256_m, tmp);
     }
-    secp256k1_sha256_finalize(&sha256_m, tmp);
-    print_scalar("tmp", tmp);
     if (!secp256k1_borromean_sign(ecmult_gen_ctx, &proof[len], s, pubs, k, sec, rsizes, secidx, rings, tmp, 32)) {
         return 0;
     }
     len += 32;
     for (i = 0; i < npub; i++) {
+      /*
+        printf("s %zu", i);
+        print_array("", &s[i], 32);
+        */
         secp256k1_scalar_get_b32(&proof[len],&s[i]);
         len += 32;
     }
+    /* print_array("proof", proof, len);*/
     VERIFY_CHECK(len <= *plen);
     *plen = len;
     memset(prep, 0, 4096);
